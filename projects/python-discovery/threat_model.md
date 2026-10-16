@@ -1,81 +1,96 @@
 # Threat model
 
-
-
-## Scope and trust boundary
-
-python-discovery finds Python interpreters from an explicit path or specification, preferred candidates, the running
-interpreter, `PATH`, Windows PEP 514 registrations and uv-managed installations. It executes candidates with a bundled
-interrogation script, parses the result into `PythonInfo`, checks it against the requested `PythonSpec`, and can cache
-that metadata on disk.
-
-Executing an interpreter explicitly named by the caller, found on the caller's trusted `PATH`, or registered by the same
-user is expected code execution. The library's security responsibilities are to preserve discovery order and selection
-constraints, avoid command-line injection while interrogating a candidate, and keep cache operations within the
-configured cache root.
-
-Inputs to treat as hostile or malformed include:
-
-- interpreter specifications, absolute paths, preferred candidates and predicates supplied by an API caller;
-- `PATH`, home and uv state variables in the supplied environment mapping;
-- directory entries, symlinks and shims encountered during discovery;
-- stdout, stderr, exit status and reported metadata from a candidate process;
-- Windows registry values for PEP 514, especially executable paths and `ExecutableArguments` raw command-line text;
-- JSON cache entries, lock files and filesystem objects in a shared or previously populated cache directory;
-- very slow, non-Python or adversarial executables that match a Python-like filename.
+The authoritative reporting policy is `.github/SECURITY.md`. It supports the latest release and accepts private reports
+through GitHub.
 
 
 
-## Components to examine
+## What python-discovery does and where untrusted input enters
 
-Prioritize `_discovery.py` for candidate ordering, path resolution and shim handling. A relative specification must not
-turn the current working directory into an implicit executable search ahead of `PATH`; version, implementation,
-architecture, free-threaded and debug constraints must all apply to the final selected interpreter.
+python-discovery finds interpreters from an explicit path or specification, preferred candidates, the running
+interpreter, `PATH`, Windows PEP 514 registrations and uv-managed installations. It runs a bundled interrogation script
+in each candidate, parses the result into `PythonInfo`, applies `PythonSpec` constraints and may cache the metadata on
+disk. virtualenv and tox depend on this selection when choosing the process that will run project code.
 
-`_cached_py_info.py` constructs the subprocess command, bounds execution time, separates attacker output from the
-cookie-delimited payload and handles Windows launcher arguments. Review quoting of `ExecutableArguments` for command
-injection and ensure a malicious candidate cannot make the library accept metadata from surrounding output or a prior
-process. Killing a timed-out process must also reap children and drain pipes without hanging.
+The caller trusts interpreters that it names, finds on its trusted `PATH`, reads from the same Windows user's registry
+or finds in that user's uv directory. Discovery executes those interpreters by design. A report needs a boundary beyond
+“a malicious interpreter runs”: argument injection, selection outside the requested source, cross-user cache poisoning
+or a constraint bypass that causes a higher-privilege caller to execute an interpreter the attacker could not otherwise
+select.
 
-Review `_cache.py` for symlink and race attacks on cache JSON and lock paths, unsafe permissions in a shared cache, and
-cache-key aliasing between different executable paths or arguments. A cache entry must not remain valid after the
-interpreter or interrogation script changes. `_windows/` registry enumeration and uv store traversal need platform-
-specific path tests.
+Inputs to test include:
 
-
-
-## Exercising the image
-
-The project is installed from `/src` into `/opt/venv` with its test group. Run `python -m pytest tests`. Tests include
-fake interpreter scripts, cache corruption and timeout cases. Security reproductions should pass an explicit environment
-mapping and temporary `DiskCache`, then create executable fixtures that emit crafted cookie markers, partial JSON, large
-output or delayed child processes.
-
-Linux cannot execute Windows PEP 514 paths. Add a focused unit test around the Windows command builder and include the
-exact Windows parsing rule in reports for Windows-only findings.
+- interpreter specifications, absolute and relative paths, `try_first_with` candidates and caller predicates;
+- `PATH`, home, uv and timeout values from the supplied environment mapping;
+- directory entries, symlinks and shims encountered during search;
+- stdout, stderr, exit status, timing and metadata returned by a candidate process;
+- PEP 514 registry values, including `ExecutablePath`, `InstallPath` and raw `ExecutableArguments`;
+- JSON and lock files under a shared or populated `DiskCache`;
+- slow, non-Python or adversarial executables with Python-like names.
 
 
 
-## Severity guidance
+## Components to prioritize
 
-- High: an interpreter specification that should select only a constrained version or path instead executes a separate
-  attacker-controlled command through argument injection, without the attacker already controlling trusted `PATH` or
-  registry configuration.
-- Medium: a different local user can poison a shared cache so a victim accepts false interpreter metadata or performs
-  filesystem changes outside the cache root; a small candidate output causes sustained memory or process exhaustion.
-- Low: discovery returns the wrong interpreter without crossing a privilege boundary, a malformed candidate crashes
-  discovery, or stale data affects only a cache controlled by the same user.
+Review `src/python_discovery/_discovery.py`, `_specifier.py` and `_py_spec.py` for search order and final constraint
+checks. Version, implementation, architecture, free-threaded and debug requirements must apply to the selected
+`system_executable` as well as the shim or launcher. Relative specifications must follow the documented
+current-interpreter and `PATH` order without an implicit working-directory search.
 
-Reports should state the platform, API call, environment mapping, candidate filesystem or registry state, cache root,
-spawned argv and selected `PythonInfo`.
+`_cached_py_info.py` constructs the interrogation command, adds PEP 514 arguments on Windows, frames JSON between random
+cookies, retries failures and enforces `PY_DISCOVERY_TIMEOUT`. Check Windows command-line quoting with raw
+`ExecutableArguments`; cookie confusion from hostile stdout; output size before JSON parsing; timeout cleanup; and child
+processes that keep pipes open. A candidate is already trusted code, so command-injection severity depends on executing
+something other than that candidate and its registered arguments.
+
+`_cache.py` keys entries by interpreter path and records the path mtime, interrogation-script hash and PEP 514
+arguments. Audit symlink races, file ownership, JSON replacement, lock paths, atomicity and aliases between executable
+paths. Cross-user cache poisoning matters when a victim uses a cache directory the attacker can modify but cannot
+replace the selected interpreter itself. Apply filelock's threat model to lock-file mechanics and keep python-discovery
+findings focused on the decision to trust cached interpreter data.
+
+Under `_windows/`, test the HKEY_CURRENT_USER and HKEY_LOCAL_MACHINE precedence, 32-bit and 64-bit views, malformed
+value types, duplicate registrations and `ExecutableArguments`. uv traversal must stay in the configured uv root and
+reject installations that fail the final specification.
 
 
 
-## Out of scope
+## How to exercise the image
 
-- Code execution by an interpreter the caller explicitly selected or placed on its trusted `PATH`.
-- A malicious Windows registration or uv installation owned and writable by the same user running discovery.
-- Arbitrary behavior in a caller-supplied predicate.
-- Incorrect metadata deliberately printed by an already-executing hostile interpreter, unless it makes discovery break a
-  selection guarantee relevant to another security boundary.
-- Bugs in filelock, the operating-system registry API or uv's installer that reproduce without python-discovery.
+The image installs the project from `/src` into `/opt/venv` with its test group. Run `python -m pytest tests`. The suite
+includes executable fixtures, cache corruption and timeout cases.
+
+Pass an explicit environment mapping and temporary `DiskCache`, then create executable fixtures that emit missing,
+repeated or partial cookie markers, large output, invalid JSON and delayed child output. Record every spawned argv and
+the final `PythonInfo`. Linux can test Windows parsers and command construction, but a claim about Windows process
+parsing needs a Windows reproducer.
+
+
+
+## Severity
+
+- High: a constrained specification or PEP 514 record executes a separate attacker-controlled command through argument
+  handling, without attacker control of the trusted interpreter source, `PATH` or registry scope.
+- High: a local user poisons a shared cache so a higher-privilege victim accepts and executes an interpreter outside the
+  requested constraints, while the attacker cannot modify that interpreter or the victim's search sources.
+- Medium: cache poisoning changes security-relevant interpreter metadata without execution, cache cleanup changes a path
+  outside the configured root, or a small candidate response causes sustained memory or process exhaustion.
+- Low: discovery returns the wrong interpreter without crossing a privilege boundary, rejects a valid interpreter,
+  crashes on malformed output or uses stale metadata from a cache owned by the same user.
+
+
+
+## Reports and exclusions
+
+Include the python-discovery commit, platform, public API call, specification, environment mapping, candidate filesystem
+or registry state, cache ownership, spawned argv, raw framed output and selected `PythonInfo`. State why the selected
+interpreter was outside the caller's trusted sources.
+
+Do not report:
+
+- execution by an interpreter the caller named, placed on trusted `PATH`, registered in its trusted registry scope or
+  installed in its uv directory;
+- arbitrary behavior in a caller-supplied predicate;
+- false metadata printed by a hostile interpreter unless it breaks a separate caller-enforced selection boundary;
+- a cache modified by the same user who controls every interpreter source;
+- a defect in filelock, the Windows registry API or uv's installer that reproduces without python-discovery.
