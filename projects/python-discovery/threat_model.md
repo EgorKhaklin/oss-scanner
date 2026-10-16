@@ -3,8 +3,6 @@
 The authoritative reporting policy is `.github/SECURITY.md`. It supports the latest release and accepts private reports
 through GitHub.
 
-
-
 ## What python-discovery does and where untrusted input enters
 
 python-discovery finds interpreters from an explicit path or specification, preferred candidates, the running
@@ -27,8 +25,6 @@ Inputs to test include:
 - PEP 514 registry values, including `ExecutablePath`, `InstallPath` and raw `ExecutableArguments`;
 - JSON and lock files under a shared or populated `DiskCache`;
 - slow, non-Python or adversarial executables with Python-like names.
-
-
 
 ## Components to prioritize
 
@@ -53,8 +49,6 @@ Under `_windows/`, test the HKEY_CURRENT_USER and HKEY_LOCAL_MACHINE precedence,
 value types, duplicate registrations and `ExecutableArguments`. uv traversal must stay in the configured uv root and
 reject installations that fail the final specification.
 
-
-
 ## How to exercise the image
 
 The image installs the project from `/src` into `/opt/venv` with its test group. Run `python -m pytest tests`. The suite
@@ -64,8 +58,6 @@ Pass an explicit environment mapping and temporary `DiskCache`, then create exec
 repeated or partial cookie markers, large output, invalid JSON and delayed child output. Record every spawned argv and
 the final `PythonInfo`. Linux can test Windows parsers and command construction, but a claim about Windows process
 parsing needs a Windows reproducer.
-
-
 
 ## Severity
 
@@ -77,8 +69,6 @@ parsing needs a Windows reproducer.
   outside the configured root, or a small candidate response causes sustained memory or process exhaustion.
 - Low: discovery returns the wrong interpreter without crossing a privilege boundary, rejects a valid interpreter,
   crashes on malformed output or uses stale metadata from a cache owned by the same user.
-
-
 
 ## Reports and exclusions
 
