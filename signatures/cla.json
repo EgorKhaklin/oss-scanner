@@ -4815,6 +4815,14 @@
       "created_at": "2026-10-22T02:12:58Z",
       "repoId": 1410719150,
       "pullRequestNo": 999
+    },
+    {
+      "name": "TomeHirata",
+      "id": 33407409,
+      "comment_id": 6331307155,
+      "created_at": "2026-10-22T02:35:38Z",
+      "repoId": 1410719150,
+      "pullRequestNo": 982
     }
   ]
 }
