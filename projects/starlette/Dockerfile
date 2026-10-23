@@ -1,13 +1,10 @@
 # The scanner uses the repository root as the build context and audits /src offline, so everything the
 # tests need is installed here, from the committed uv.lock, as CI does.
-FROM python:3.13-bookworm
+FROM ghcr.io/astral-sh/uv:python3.13-bookworm
 
 ENV DEBIAN_FRONTEND=noninteractive \
     UV_LINK_MODE=copy \
-    UV_PYTHON_DOWNLOADS=never \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
-
-RUN pip install --no-cache-dir uv
+    UV_PYTHON_DOWNLOADS=never
 
 COPY . /src
 WORKDIR /src
