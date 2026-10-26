@@ -41,6 +41,15 @@ pgp: |
   -----END PGP PUBLIC KEY BLOCK-----
 ```
 
+To choose where reports go, set the lowest severity each channel receives: `low`, `medium`, `high`, `critical`, or `none` to turn the channel off. A channel you leave out uses the default shown here, and a report at or above both minimums goes to both channels:
+```
+output_format:
+  email:
+    min_severity: low
+  github_security_advisory:          # GitHub private vulnerability reporting
+    min_severity: high
+```
+
 You must provide a Dockerfile, in exactly one of two places:
 
 * **in your own repository**: set `dockerfile:` to its path (we suggest at some location like `.oss-scanner/Dockerfile`). This is the preferred option because it allows you to update the build without a pull request here; or,  

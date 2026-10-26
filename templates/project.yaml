@@ -21,6 +21,14 @@ homepage: https://example.org
 #   mDMEZ...
 #   -----END PGP PUBLIC KEY BLOCK-----
 
+# Optional. The lowest severity each channel receives: low, medium, high, critical, or none to turn it off.
+# A channel you leave out uses the default shown here. A report can go to both channels.
+output_format:
+  email:
+    min_severity: low
+  github_security_advisory:
+    min_severity: high
+
 # Optional. true pauses reports without removing the enrolment; false (or omitting it) enables your project.
 disabled: false
 
