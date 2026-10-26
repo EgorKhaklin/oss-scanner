@@ -16,7 +16,7 @@ Fields allowed in project.yaml:
     threat_model: <path in your repo>   optional   defaults to .oss-scanner/threat_model.md
     auto_ccs: [a@b.c, ...]              optional   cannot be combined with pgp
     homepage: https://...               optional
-    pgp: <armored public key>           optional   if set, reports are encrypted to this key
+    pgp: <armored public key>           optional   if set, email reports are encrypted to this key
     disabled: true|false                optional   true pauses reports
     output_format:                      optional   lowest severity each channel receives
       email:
