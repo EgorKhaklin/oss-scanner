@@ -28,7 +28,7 @@ output_format:
   email:
     min_severity: low
   github_security_advisory:
-    min_severity: high
+    min_severity: none
 
 # Optional. true pauses reports without removing the enrolment; false (or omitting it) enables your project.
 disabled: false

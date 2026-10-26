@@ -22,7 +22,7 @@ Fields allowed in project.yaml:
       email:
         min_severity: low|medium|high|critical|none                   default low
       github_security_advisory:
-        min_severity: low|medium|high|critical|none                   default high
+        min_severity: low|medium|high|critical|none                   default none
 
 The only other files allowed next to project.yaml are a Dockerfile and a threat_model.md. Each one must
 live in exactly one place: either next to project.yaml, or in your repository at the path set by its key.

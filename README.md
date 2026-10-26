@@ -47,7 +47,7 @@ output_format:
   email:
     min_severity: low
   github_security_advisory:          # GitHub private vulnerability reporting
-    min_severity: high
+    min_severity: none
 ```
 
 You must provide a Dockerfile, in exactly one of two places:
