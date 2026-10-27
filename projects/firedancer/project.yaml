@@ -19,6 +19,10 @@ homepage: https://firedancer.io
 #   mDMEZ...
 #   -----END PGP PUBLIC KEY BLOCK-----
 
+output_format:
+  github_security_advisory:
+    min_severity: low
+
 # Optional. true pauses reports without removing the enrolment; false (or omitting it) enables your project.
 disabled: false
 
